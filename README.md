@@ -1,7 +1,6 @@
 # Respiratory-Illness-Research
-### Respiratory & Public Health Research
 
-🌬️ Breathing life into data.
+### 🌬️ Breathing life into data.
 This repo covers two projects:
 
 Pneumonia & Influenza Mortality Trends – R and HTML analysis of seasonal patterns, risks, and healthcare challenges.
