@@ -1,0 +1,321 @@
+---
+utitle: Pnemonia and Influenza
+author: "Data Detectives"
+date: "2024-05-08"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+# Output the current working directory to verify the change
+print(getwd())
+```
+
+```{r}
+# Ensure the 'readr' library is available for data reading operations
+# Uncomment the next line to install the 'readr' library if it's not already installed
+# install.packages("readr")
+library(readr)
+```
+
+```{r}
+# Load the dataset into a dataframe named 'mortality_data'
+mortality_data <- read_csv("C:/Users/fazal/Downloads/Deaths_from_Pneumonia_and_Influenza__P_I__and_all_deaths__by_state_and_region__National_Center_For_Hea.csv")
+```
+
+```{r}
+# Display the first few rows of the dataframe to check its structure
+head(mortality_data)
+
+##Data Management
+
+# Calculate the number of missing values for each column
+missing_values <- sapply(mortality_data, function(x) sum(is.na(x)))
+
+# Displaying the missing values
+print(missing_values)
+
+```
+
+```{r}
+# Remove specified columns from the dataframe
+mortality_data <- mortality_data[, !colnames(mortality_data) %in% c("Region", "Deaths from influenza", "Deaths from pneumonia")]
+```
+
+```{r}
+# Calculating the mode for the 'State' column
+mode_state <- names(which.max(table(mortality_data$State, useNA = "no")))
+```
+
+```{r}
+# Replace missing values in the 'State' column with the mode
+mortality_data$State[is.na(mortality_data$State)] <- mode_state
+```
+
+```{r}
+# Omit rows with any remaining missing values
+mortality_data <- na.omit(mortality_data)
+```
+
+```{r}
+# Check the cleaned dataset
+print(head(mortality_data))
+```
+
+This R script processes a dataset, mortality_data, focusing on handling missing values and refining its structure for analysis. It calculates missing values per column and reports these along with the total number of rows. Columns irrelevant to the analysis, such as "Region", and specific causes of death, are removed. For the 'State' column, it computes the most frequently occurring state (mode) and uses it to replace any missing values. It then discards any rows still containing missing values. Finally, the script provides a preview of the cleaned dataset, ensuring it is ready for further analysis.
+
+##Descriptive analysis
+
+```{r}
+# Function to find unique values for each column
+unique_values <- sapply(mortality_data, unique)
+
+# Print unique values
+print(unique_values)
+```
+
+```{r}
+# Define a function to calculate the mode
+calculate_mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+```
+
+```{r}
+# Apply the mode calculation function to each column in the dataframe
+mode_values <- sapply(mortality_data, calculate_mode)
+
+# Print the modes for each column
+print(mode_values)
+```
+
+```{r}
+# Calculate standard deviation for each numeric column in the dataframe
+std_deviation <- sapply(mortality_data, function(x) if(is.numeric(x)) sd(x, na.rm = TRUE))
+
+# Print the standard deviations
+print(std_deviation)
+```
+
+```{r}
+
+# Convert 'geoid' categories to specified numbers
+mortality_data$geoid <- factor(mortality_data$geoid, levels = c("State", "National", "Region"), labels = c(1, 2, 3))
+
+# Convert 'age' categories to specified numbers
+mortality_data$age <- factor(mortality_data$age, levels = c("All", "65 years and older", "18-64 years", "0-17 years"), labels = c(1, 2, 3, 4))
+
+# Convert 'season' categories to specified numbers
+# First, ensure all mentioned seasons are listed and arranged in the specified order
+mortality_data$season <- factor(mortality_data$season, levels = c("2017-18", "2018-19", "2015-16", "2014-15", "2016-17", "2009-10", "2012-13", "2013-14", "2010-11", "2011-12"), 
+                      labels = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+```
+
+```{r}
+
+# Print the modified data to check the changes
+print(head(mortality_data))
+
+library(dplyr)
+library(modeest)
+
+summary(mortality_data)
+
+```
+
+This R script conducts a descriptive analysis of mortality_data. It identifies unique values for each column and calculates the mode to determine the most frequently occurring values. For numeric columns, it computes the standard deviation to measure data variability. The script also re-categorizes specific columns like geoid, age, and season into numeric codes for easier analysis. Factors are applied to ensure that each category corresponds to a unique numeric value based on predefined levels. It concludes by displaying the transformed data and using additional libraries, dplyr and modeest, to summarize the refined dataset comprehensively.
+
+```{r}
+##Data visualization
+
+library(ggplot2)  # For creating graphics
+library(readr)    # For reading data
+
+# Create a bar plot of Deaths from pneumonia and influenza by age group
+ggplot(mortality_data, aes(x = age, y = `Deaths from pneumonia and influenza`, fill = age)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +  # Using a minimal theme for a cleaner look
+  labs(title = "Deaths from Pneumonia and Influenza by Age Group", x = "Age Group", y = "Number of Deaths") +
+  scale_fill_brewer(palette = "Pastel1")
+  
+# Create a scatter plot to investigate the relationship between the two variables by age
+ggplot(mortality_data, aes(x = `Pecent of deaths due to pneumonia or influenza`, y = `All Deaths`, color = age)) +
+  geom_point(alpha = 0.6) +  # Setting transparency to see overlapping points
+  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Adding a linear regression line without a confidence interval
+  theme_minimal() +  # Using a minimal theme for a clean look
+  labs(title = "Relationship between P&I Death Percentage and All Deaths by Age",
+       x = "Percent of Deaths Due to Pneumonia or Influenza",
+       y = "Total Deaths",
+       color = "Age Group") +
+  scale_color_brewer(type = "qual", palette = "Set1")
+  
+# Create a faceted bar chart to display the percent of deaths due to pneumonia or influenza by age and season
+ggplot(mortality_data, aes(x = age, y = `Pecent of deaths due to pneumonia or influenza`, fill = age)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ season, scales = "free_y") +  # Faceting by season with independent y scales
+  theme_minimal() +  # Applying a minimal theme for clarity
+  labs(title = "Percent of Deaths Due to Pneumonia or Influenza by Age Across Seasons",
+       x = "Age Group",
+       y = "Percent of Deaths Due to Pneumonia or Influenza") +
+  scale_fill_brewer(type = "qual", palette = "Paired")
+
+```
+
+This R script creates visual representations of mortality data using the ggplot2 and readr libraries. It features a bar plot displaying deaths from pneumonia and influenza by age group, emphasizing differences between age categories with a pastel color palette. A scatter plot explores the relationship between the percentage of deaths due to pneumonia or influenza and total deaths across age groups, including a linear regression line to highlight trends without confidence intervals. Lastly, a faceted bar chart visualizes the percentage of pneumonia or influenza deaths across different seasons and age groups, using independent y-axes for clarity and a paired color palette to differentiate between age groups effectively. These visualizations help elucidate patterns and relationships within the data.
+
+```{r}
+##Statistcal Test and Assumptions
+
+# Correlation test for P&I deaths and all deaths
+cor_test <- cor.test(mortality_data$`Deaths from pneumonia and influenza`, mortality_data$`All Deaths`, method = "pearson")
+print(cor_test)
+
+# ANOVA for P&I deaths by State
+anova_results <- aov(`Deaths from pneumonia and influenza` ~ State, data = mortality_data)
+summary(anova_results)
+
+# Kruskal-Wallis test for all deaths by State, a non-parametric method
+kruskal_test <- kruskal.test(`All Deaths` ~ State, data = mortality_data)
+print(kruskal_test)
+```
+
+This R script performs statistical tests to analyze relationships and differences within the mortality_data dataset. First, a Pearson correlation test examines the linear relationship between the number of deaths from pneumonia and influenza and total deaths, indicating the strength and direction of the association. Next, an ANOVA (Analysis of Variance) test assesses whether there are statistically significant differences in deaths from pneumonia and influenza across different states, ideal for comparing means among groups. Lastly, the Kruskal-Wallis test, a non-parametric alternative to ANOVA, checks for differences in the distribution of total deaths by state, suitable for non-normally distributed data or ordinal categories. This approach provides comprehensive insights into the data's characteristics and relationships.
+
+```{r}
+
+##Post Hocs and Standarized Residuals
+
+# Conducting Tukey's HSD test if ANOVA is significant
+if (summary(anova_results)[[1]][["Pr(>F)"]][1] < 0.05) {
+  tukey_test <- TukeyHSD(anova_results)
+  print(tukey_test)
+} else {
+  print("No significant differences found by ANOVA; no need for post-hoc analysis.")
+}
+
+# Diagnostic plot for residuals
+plot(anova_results, which = 1) 
+
+# Check for normality of residuals
+qqnorm(residuals(anova_results))
+qqline(residuals(anova_results), col = "steelblue")
+
+if (length(residuals(anova_results)) > 5000) {
+  sampled_residuals <- sample(residuals(anova_results), 5000)
+  shapiro_test <- shapiro.test(sampled_residuals)
+} else {
+  shapiro_test <- shapiro.test(residuals(anova_results))
+}
+print(shapiro_test)
+```
+
+This R script segment handles post-hoc analysis and diagnostic checks following an ANOVA test. If the ANOVA indicates significant differences in pneumonia and influenza deaths across states (p-value < 0.05), it proceeds with Tukey's Honest Significant Difference (HSD) test to identify specific group differences. It also visualizes the ANOVA residuals to assess assumptions about data distribution and homoscedasticity. Normality of residuals is checked using a Q-Q plot, enhanced with a reference line. If the dataset is large (over 5000 residuals), a sample is tested for normality using the Shapiro-Wilk test to manage performance; otherwise, all residuals are tested directly, ensuring that the analysis is thorough and efficient in diagnosing model fit and validity.
+
+```{r}
+##Effect size measurement
+
+library(effsize) 
+
+# Calculate the percentage of deaths due to P&I for each observation
+mortality_data$Pecent_of_PandI_Deaths <- with(mortality_data, (`Deaths from pneumonia and influenza` / `All Deaths`) * 100)
+
+# Calculate the overall average percentage of P&I deaths
+average_PandI <- mean(mortality_data$Pecent_of_PandI_Deaths, na.rm = TRUE)
+```
+
+```{r}
+
+# Create two groups based on the average percentage
+mortality_data$Risk_Group <- ifelse(mortality_data$Pecent_of_PandI_Deaths > average_PandI, "High-Risk", "Low-Risk")
+
+# View the first few rows of the updated dataset to verify the groups
+head(mortality_data)
+
+# Optionally, summarize the data to see the distribution across groups
+summary_stats <- mortality_data %>%
+  group_by(Risk_Group) %>%
+  summarise(
+    Average_PandI_Deaths = mean(Pecent_of_PandI_Deaths, na.rm = TRUE),
+    Count = n()
+  )
+print(summary_stats)
+```
+
+```{r}
+
+# Filter data for the two groups
+high_risk_data <- mortality_data$Pecent_of_PandI_Deaths[mortality_data$Risk_Group == "High-Risk"]
+low_risk_data <- mortality_data$Pecent_of_PandI_Deaths[mortality_data$Risk_Group == "Low-Risk"]
+
+# Perform t-test
+t_test_result <- t.test(high_risk_data, low_risk_data)
+
+# Calculate Cohen's d for effect size
+cohen_d_result <- cohen.d(high_risk_data, low_risk_data)
+print(t_test_result)
+print(cohen_d_result)
+```
+
+
+This R script enhances mortality_data by calculating the percentage of deaths due to pneumonia and influenza (P&I) for each entry and categorizing observations into risk groups based on the overall average percentage of P&I deaths. Observations above the mean are labeled "High-Risk" and those below are "Low-Risk." It then summarizes the average percentage of P&I deaths and counts within each risk group. For a comparative analysis between these groups, a t-test is performed to assess statistical differences in the percentage of P&I deaths. Additionally, Cohen's d is computed to quantify the effect size, providing a measure of the strength of the relationship between the risk groups, thereby offering a comprehensive view of the data's distribution and differences across risk categories.
+
+```{r}
+##Linear regression
+
+set.seed(123)  # for reproducibility
+
+# Loading necessary libraries
+library(caret)
+
+# Splitting data into training and testing sets
+trainIndex <- createDataPartition(mortality_data$`Pecent of deaths due to pneumonia or influenza`, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
+trainData <- mortality_data[trainIndex, ]
+testData <- mortality_data[-trainIndex, ]
+
+# Fit linear regression model
+model <- lm(`Pecent of deaths due to pneumonia or influenza` ~ ., data = trainData)
+
+# Predictions
+predictions <- predict(model, newdata = testData)
+```
+
+```{r}
+# Calculate RMSE for the prediction
+rmse <- sqrt(mean((predictions - testData$`Pecent of deaths due to pneumonia or influenza`)^2))
+```
+
+```{r}
+# Print RMSE results
+print(paste("RMSE for Pecent of deaths due to pneumonia or influenza:", rmse))
+
+```
+
+This R script sets up a linear regression model to predict the percentage of deaths due to pneumonia or influenza using the mortality_data dataset. It begins by setting a random seed for reproducibility and loading the caret library, which provides tools for data splitting, model training, and prediction. The dataset is then divided into training (80%) and testing (20%) sets. A linear regression model is fitted on the training data, using all available predictors. Predictions are made on the test dataset, and the Root Mean Square Error (RMSE) is calculated to evaluate the model’s accuracy. The RMSE quantifies the prediction error, providing a straightforward metric to assess the model's performance. The result is displayed, showing the effectiveness of the model in predicting the outcome based on the test data.
+
+```{r}
+#Additional Analyses 
+# Diagnostic plots for assessing model assumptions
+par(mfrow = c(2, 2))
+plot(model)
+
+# Checking for independence with Durbin-Watson Test
+library(lmtest)
+dwtest(model)
+
+# Checking for homoscedasticity with Breusch-Pagan test
+bptest(model)
+
+```
+
+This R script performs additional analyses to assess the assumptions of the linear regression model fitted to the mortality_data. It starts with diagnostic plots arranged in a 2x2 grid to visually evaluate model assumptions including linearity, normality of residuals, homoscedasticity, and leverage points. Following the plots, the script checks for independence of residuals using the Durbin-Watson test, which identifies autocorrelation issues. It then uses the lmtest library for this purpose. To assess homoscedasticity, the Breusch-Pagan test is conducted, determining if the variance of residuals is constant across levels of the independent variables. These tests help ensure the validity of the regression model's results by verifying key statistical assumptions.
